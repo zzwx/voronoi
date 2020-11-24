@@ -3,11 +3,10 @@
 
 // Author: Przemyslaw Szczepaniak (przeszczep@gmail.com)
 // Utils for processing voronoi diagrams
-
 package utils
 
 import (
-	"github.com/pzsz/voronoi"
+	"github.com/zzwx/voronoi"
 	"math/rand"
 )
 
@@ -17,8 +16,8 @@ func RandomSites(bbox voronoi.BBox, count int) []voronoi.Vertex {
 	w := bbox.Xr - bbox.Xl
 	h := bbox.Yb - bbox.Yt
 	for j := 0; j < count; j++ {
-		sites[j].X = rand.Float64() * w + bbox.Xl
-		sites[j].Y = rand.Float64() * h + bbox.Yt
+		sites[j].X = rand.Float64()*w + bbox.Xl
+		sites[j].Y = rand.Float64()*h + bbox.Yt
 	}
 	return sites
 }

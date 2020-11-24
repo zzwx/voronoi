@@ -3,16 +3,15 @@
 
 // Author: Przemyslaw Szczepaniak (przeszczep@gmail.com)
 // Utils for processing voronoi diagrams
-
 package utils
 
 import (
+	"github.com/zzwx/voronoi"
 	"math"
-	"github.com/pzsz/voronoi"
 )
 
-func Distance(a,b voronoi.Vertex) float64 {
+func Distance(a, b voronoi.Vertex) float64 {
 	dx := a.X - b.X
 	dy := a.Y - b.Y
-	return math.Sqrt(dx*dx+dy*dy)
+	return math.Sqrt(dx*dx + dy*dy)
 }

@@ -1,9 +1,8 @@
 // MIT License: See https://github.com/pzsz/voronoi/LICENSE.md
 
 // Author: Przemyslaw Szczepaniak (przeszczep@gmail.com)
-// Port of Raymond Hill's (rhill@raymondhill.net) javascript implementation 
+// Port of Raymond Hill's (rhill@raymondhill.net) JavaScript implementation
 // of Steven  Forune's algorithm to compute Voronoi diagrams
-
 package voronoi
 
 // Red-Black tree code (based on C version of "rbtree" by Franck Bui-Huu

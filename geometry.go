@@ -1,9 +1,8 @@
 // MIT License: See https://github.com/pzsz/voronoi/LICENSE.md
 
 // Author: Przemyslaw Szczepaniak (przeszczep@gmail.com)
-// Port of Raymond Hill's (rhill@raymondhill.net) javascript implementation 
+// Port of Raymond Hill's (rhill@raymondhill.net) JavaScript implementation
 // of Steven Forune's algorithm to compute Voronoi diagrams
-
 package voronoi
 
 import (
@@ -29,6 +28,16 @@ func (s Vertices) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 type VerticesByY struct{ Vertices }
 
 func (s VerticesByY) Less(i, j int) bool { return s.Vertices[i].Y < s.Vertices[j].Y }
+
+// Used for sorting vertices along the Y, then X axis
+type VerticesByYX struct{ Vertices }
+
+func (s VerticesByYX) Less(i, j int) bool {
+	if s.Vertices[i].Y != s.Vertices[j].Y {
+		return s.Vertices[j].Y < s.Vertices[i].Y
+	}
+	return s.Vertices[j].X < s.Vertices[i].X
+}
 
 type EdgeVertex struct {
 	Vertex
@@ -122,7 +131,10 @@ func newHalfedge(edge *Edge, LeftCell, RightCell *Cell) *Halfedge {
 }
 
 func (h *Halfedge) GetStartpoint() Vertex {
-	if h.Edge.LeftCell == h.Cell {
+	if h.Cell != nil &&
+		h.Edge != nil &&
+		h.Edge.LeftCell != nil &&
+		h.Edge.LeftCell == h.Cell {
 		return h.Edge.Va.Vertex
 	}
 	return h.Edge.Vb.Vertex
@@ -130,7 +142,10 @@ func (h *Halfedge) GetStartpoint() Vertex {
 }
 
 func (h *Halfedge) GetEndpoint() Vertex {
-	if h.Edge.LeftCell == h.Cell {
+	if h.Cell != nil &&
+		h.Edge != nil &&
+		h.Edge.LeftCell != nil &&
+		h.Edge.LeftCell == h.Cell {
 		return h.Edge.Vb.Vertex
 	}
 	return h.Edge.Va.Vertex

@@ -3,13 +3,11 @@
 
 // Author: Przemyslaw Szczepaniak (przeszczep@gmail.com)
 // Utils for processing voronoi diagrams
-
 package utils
 
 import (
-	"github.com/pzsz/voronoi"
+	"github.com/zzwx/voronoi"
 )
-
 
 // Apply lloyd relaxation algorithm to the cells.
 func LloydRelaxation(cells []*voronoi.Cell) (ret []voronoi.Vertex) {

@@ -1,9 +1,8 @@
 // MIT License: See https://github.com/pzsz/voronoi/LICENSE.md
 
 // Author: Przemyslaw Szczepaniak (przeszczep@gmail.com)
-// Port of Raymond Hill's (rhill@raymondhill.net) javascript implementation 
+// Port of Raymond Hill's (rhill@raymondhill.net) JavaScript implementation
 // of Steven Forune's algorithm to compute Voronoi diagrams
-
 package voronoi
 
 import "math"
@@ -35,22 +34,20 @@ func (s *Voronoi) getCell(site Vertex) *Cell {
 	return ret
 }
 
-func (s *Voronoi) createEdge(LeftCell, RightCell *Cell, va, vb Vertex) *Edge {
-	edge := newEdge(LeftCell, RightCell)
+//
+func (s *Voronoi) createEdge(lSite, rSite *Cell, va, vb Vertex) *Edge {
+	edge := newEdge(lSite, rSite)
+
 	s.edges = append(s.edges, edge)
+
 	if va != NO_VERTEX {
-		s.setEdgeStartpoint(edge, LeftCell, RightCell, va)
+		s.setEdgeStartpoint(edge, lSite, rSite, va)
 	}
-
 	if vb != NO_VERTEX {
-		s.setEdgeEndpoint(edge, LeftCell, RightCell, vb)
+		s.setEdgeEndpoint(edge, lSite, rSite, vb)
 	}
-
-	lCell := LeftCell
-	rCell := RightCell
-
-	lCell.Halfedges = append(lCell.Halfedges, newHalfedge(edge, LeftCell, RightCell))
-	rCell.Halfedges = append(rCell.Halfedges, newHalfedge(edge, RightCell, LeftCell))
+	lSite.Halfedges = append(lSite.Halfedges, newHalfedge(edge, lSite, rSite))
+	rSite.Halfedges = append(rSite.Halfedges, newHalfedge(edge, rSite, lSite))
 	return edge
 }
 
@@ -96,9 +93,43 @@ func (s *Beachsection) getNode() *rbNode {
 	return s.node
 }
 
-// Calculate the left break point of a particular beach section,
+// calculate the left break point of a particular beach section,
 // given a particular sweep line
 func leftBreakPoint(arc *Beachsection, directrix float64) float64 {
+	// http://en.wikipedia.org/wiki/Parabola
+	// http://en.wikipedia.org/wiki/Quadratic_equation
+	// h1 = x1,
+	// k1 = (y1+directrix)/2,
+	// h2 = x2,
+	// k2 = (y2+directrix)/2,
+	// p1 = k1-directrix,
+	// a1 = 1/(4*p1),
+	// b1 = -h1/(2*p1),
+	// c1 = h1*h1/(4*p1)+k1,
+	// p2 = k2-directrix,
+	// a2 = 1/(4*p2),
+	// b2 = -h2/(2*p2),
+	// c2 = h2*h2/(4*p2)+k2,
+	// x = (-(b2-b1) + Math.sqrt((b2-b1)*(b2-b1) - 4*(a2-a1)*(c2-c1))) / (2*(a2-a1))
+	// When x1 become the x-origin:
+	// h1 = 0,
+	// k1 = (y1+directrix)/2,
+	// h2 = x2-x1,
+	// k2 = (y2+directrix)/2,
+	// p1 = k1-directrix,
+	// a1 = 1/(4*p1),
+	// b1 = 0,
+	// c1 = k1,
+	// p2 = k2-directrix,
+	// a2 = 1/(4*p2),
+	// b2 = -h2/(2*p2),
+	// c2 = h2*h2/(4*p2)+k2,
+	// x = (-b2 + Math.sqrt(b2*b2 - 4*(a2-a1)*(c2-k1))) / (2*(a2-a1)) + x1
+
+	// change code below at your own risk: care has been taken to
+	// reduce errors due to computers' finite arithmetic precision.
+	// Maybe can still be improved, will see if any more of this
+	// kind of errors pop up again.
 	site := arc.site
 	rfocx := site.X
 	rfocy := site.Y
@@ -144,9 +175,9 @@ func rightBreakPoint(arc *Beachsection, directrix float64) float64 {
 	return math.Inf(1)
 }
 
-func (s *Voronoi) detachBeachsection(arc *Beachsection) {
-	s.detachCircleEvent(arc)
-	s.beachline.removeNode(arc.node)
+func (s *Voronoi) detachBeachsection(beachsection *Beachsection) {
+	s.detachCircleEvent(beachsection)         // detach potentially attached circle event
+	s.beachline.removeNode(beachsection.node) // remove from RB-tree
 }
 
 type BeachsectionPtrs []*Beachsection
@@ -353,9 +384,7 @@ func (s *Voronoi) addBeachsection(site Vertex) {
 
 		// since we have a new transition between two beach sections,
 		// a new edge is born
-		lCell := s.getCell(lArc.site)
-		newCell := s.getCell(newArc.site)
-		newArc.edge = s.createEdge(lCell, newCell, NO_VERTEX, NO_VERTEX)
+		newArc.edge = s.createEdge(s.getCell(lArc.site), s.getCell(newArc.site), NO_VERTEX, NO_VERTEX)
 		rArc.edge = newArc.edge
 
 		// check whether the left and right beach sections are collapsing
@@ -376,9 +405,7 @@ func (s *Voronoi) addBeachsection(site Vertex) {
 	//   no collapsing beach section as a result
 	//   new beach section become right-most node of the RB-tree
 	if lArc != nil && rArc == nil {
-		lCell := s.getCell(lArc.site)
-		newCell := s.getCell(newArc.site)
-		newArc.edge = s.createEdge(lCell, newCell, NO_VERTEX, NO_VERTEX)
+		newArc.edge = s.createEdge(s.getCell(lArc.site), s.getCell(newArc.site), NO_VERTEX, NO_VERTEX)
 		return
 	}
 
@@ -515,7 +542,7 @@ func (s *Voronoi) attachCircleEvent(arc *Beachsection) {
 	// Important: ybottom should always be under or at sweep, so no need
 	// to waste CPU cycles by checking
 
-	// recycle circle event object if possible	
+	// recycle circle event object if possible
 	circleEventInst := &circleEvent{
 		arc:     arc,
 		site:    cSite,
@@ -571,12 +598,15 @@ func (s *Voronoi) detachCircleEvent(arc *Beachsection) {
 
 // Bounding Box
 type BBox struct {
-	Xl, Xr, Yt, Yb float64
+	Xl,
+	Yt,
+	Xr,
+	Yb float64
 }
 
-// Create new Bounding Box
-func NewBBox(xl, xr, yt, yb float64) BBox {
-	return BBox{xl, xr, yt, yb}
+// Create new Bounding Box by providing top-left and bottom-right coordinates
+func NewBBox(xLeft, yTop, xRight, yBottom float64) BBox {
+	return BBox{xLeft, yTop, xRight, yBottom}
 }
 
 // connect dangling edges (not if a cursory test tells us
@@ -607,6 +637,15 @@ func connectEdge(edge *Edge, bbox BBox) bool {
 	fy := (ly + ry) / 2
 
 	var fm, fb float64
+
+	// if we reach here, this means cells which use this edge will need
+	// to be closed, whether because the edge was removed, or because it
+	// was connected to the bounding box.
+	// TODO(zzwx): Is it what it is?
+	edge.LeftCell.closeMe = true
+	edge.RightCell.closeMe = true
+	//this.cells[lSite.voronoiId].closeMe = true;
+	//this.cells[rSite.voronoiId].closeMe = true;
 
 	// get the line equation of the bisector if line is not vertical
 	if !equalWithEpsilon(ry, ly) {
@@ -719,13 +758,15 @@ func clipEdge(edge *Edge, bbox BBox) bool {
 	if dx < 0 {
 		if r < t0 {
 			return false
-		} else if r < t1 {
+		}
+		if r < t1 {
 			t1 = r
 		}
 	} else if dx > 0 {
 		if r > t1 {
 			return false
-		} else if r > t0 {
+		}
+		if r > t0 {
 			t0 = r
 		}
 	}
@@ -738,13 +779,15 @@ func clipEdge(edge *Edge, bbox BBox) bool {
 	if dx < 0 {
 		if r > t1 {
 			return false
-		} else if r > t0 {
+		}
+		if r > t0 {
 			t0 = r
 		}
 	} else if dx > 0 {
 		if r < t0 {
 			return false
-		} else if r < t1 {
+		}
+		if r < t1 {
 			t1 = r
 		}
 	}
@@ -758,17 +801,19 @@ func clipEdge(edge *Edge, bbox BBox) bool {
 	if dy < 0 {
 		if r < t0 {
 			return false
-		} else if r < t1 {
+		}
+		if r < t1 {
 			t1 = r
 		}
 	} else if dy > 0 {
 		if r > t1 {
 			return false
-		} else if r > t0 {
+		}
+		if r > t0 {
 			t0 = r
 		}
 	}
-	// bottom        
+	// bottom
 	q = bbox.Yb - ay
 	if dy == 0 && q < 0 {
 		return false
@@ -777,13 +822,15 @@ func clipEdge(edge *Edge, bbox BBox) bool {
 	if dy < 0 {
 		if r > t1 {
 			return false
-		} else if r > t0 {
+		}
+		if r > t0 {
 			t0 = r
 		}
 	} else if dy > 0 {
 		if r < t0 {
 			return false
-		} else if r < t1 {
+		}
+		if r < t1 {
 			t1 = r
 		}
 	}
@@ -804,6 +851,16 @@ func clipEdge(edge *Edge, bbox BBox) bool {
 	// one is likely shared with at least another edge
 	if t1 < 1 {
 		edge.Vb.Vertex = Vertex{ax + t1*dx, ay + t1*dy}
+	}
+
+	// va and/or vb were clipped, thus we will need to close
+	// cells which use this edge.
+	if t0 > 0 || t1 < 1 {
+		// TODO(zzwx): Is this what it is?
+		edge.LeftCell.closeMe = true
+		edge.RightCell.closeMe = true
+		//this.cells[edge.lSite.voronoiId].closeMe = true;
+		//this.cells[edge.rSite.voronoiId].closeMe = true;
 	}
 
 	return true
@@ -828,23 +885,28 @@ func (s *Voronoi) clipEdges(bbox BBox) {
 	abs_fn := math.Abs
 
 	// iterate backward so we can splice safely
-	for i := len(s.edges) - 1; i >= 0; i-- {
-		edge := s.edges[i]
+	for iEdge := len(s.edges) - 1; iEdge >= 0; iEdge-- {
+		edge := s.edges[iEdge]
 		// edge is removed if:
 		//   it is wholly outside the bounding box
-		//   it is actually a point rather than a line
-		if !connectEdge(edge, bbox) || !clipEdge(edge, bbox) || (abs_fn(edge.Va.X-edge.Vb.X) < 1e-9 && abs_fn(edge.Va.Y-edge.Vb.Y) < 1e-9) {
+		//   it is looking more like a point than a line
+		if !connectEdge(edge, bbox) ||
+			!clipEdge(edge, bbox) ||
+			(abs_fn(edge.Va.X-edge.Vb.X) < 1e-9 && abs_fn(edge.Va.Y-edge.Vb.Y) < 1e-9) {
 			edge.Va.Vertex = NO_VERTEX
 			edge.Vb.Vertex = NO_VERTEX
-			s.edges[i] = s.edges[len(s.edges)-1]
-			s.edges = s.edges[0 : len(s.edges)-1]
+			SpliceEdges(&s.edges, iEdge, 1)
+			//s.edges[iEdge] = s.edges[len(s.edges)-1]
+			//s.edges = s.edges[0 : len(s.edges)-1]
 		}
 	}
 }
 
+// closeCells closes the cells.
+// The cells are bound by the supplied bounding box.
+// Each cell refers to its associated site, and a list
+// of halfedges ordered counterclockwise.
 func (s *Voronoi) closeCells(bbox BBox) {
-	// prune, order halfedges, then add missing ones
-	// required to close cells
 	xl := bbox.Xl
 	xr := bbox.Xr
 	yt := bbox.Yt
@@ -852,80 +914,168 @@ func (s *Voronoi) closeCells(bbox BBox) {
 	cells := s.cells
 	abs_fn := math.Abs
 
-	for _, cell := range cells {
-		// trim non fully-defined halfedges and sort them counterclockwise
-		if cell.prepare() == 0 {
+	for iCell := len(cells) - 1; iCell >= 0; iCell-- {
+		cell := cells[iCell]
+		// prune, order halfedges counterclockwise, then add missing ones
+		// required to close cells
+		if cell.prepareHalfedges() == 0 {
 			continue
 		}
-
-		// close open cells
-		// step 1: find first 'unclosed' point, if any.
+		if !cell.closeMe {
+			continue
+		}
+		// find first 'unclosed' point.
 		// an 'unclosed' point will be the end point of a halfedge which
 		// does not match the start point of the following halfedge
-		halfedges := cell.Halfedges
-		nHalfedges := len(halfedges)
-
+		//halfedges := cell.Halfedges
+		//nHalfedges := len(cell.Halfedges)
 		// special case: only one site, in which case, the viewport is the cell
 		// ...
+
 		// all other cases
 		iLeft := 0
-		for iLeft < nHalfedges {
-			iRight := (iLeft + 1) % nHalfedges
-			endpoint := halfedges[iLeft].GetEndpoint()
-			startpoint := halfedges[iRight].GetStartpoint()
+		for iLeft < len(cell.Halfedges) {
+			va := cell.Halfedges[iLeft].GetEndpoint()
+			vz := cell.Halfedges[(iLeft+1)%len(cell.Halfedges)].GetStartpoint()
 			// if end point is not equal to start point, we need to add the missing
 			// halfedge(s) to close the cell
-			if abs_fn(endpoint.X-startpoint.X) >= 1e-9 || abs_fn(endpoint.Y-startpoint.Y) >= 1e-9 {
-				// if we reach this point, cell needs to be closed by walking
-				// counterclockwise along the bounding box until it connects
-				// to next halfedge in the list
-				va := endpoint
-				vb := endpoint
+			if abs_fn(va.X-vz.X) >= 1e-9 || abs_fn(va.Y-vz.Y) >= 1e-9 {
+
+				// rhill 2013-12-02:
+				// "Holes" in the halfedges are not necessarily always adjacent.
+				// https://github.com/gorhill/Javascript-Voronoi/issues/16
+
+				// find entry point:
+				switch {
 				// walk downward along left side
-				if equalWithEpsilon(endpoint.X, xl) && lessThanWithEpsilon(endpoint.Y, yb) {
-					if equalWithEpsilon(startpoint.X, xl) {
-						vb = Vertex{xl, startpoint.Y}
+				case equalWithEpsilon(va.X, xl) && lessThanWithEpsilon(va.Y, yb):
+					lastBorderSegment := equalWithEpsilon(vz.X, xl)
+					var vb Vertex
+					if lastBorderSegment {
+						vb = Vertex{xl, vz.Y}
 					} else {
 						vb = Vertex{xl, yb}
 					}
-
-					// walk rightward along bottom side
-				} else if equalWithEpsilon(endpoint.Y, yb) && lessThanWithEpsilon(endpoint.X, xr) {
-					if equalWithEpsilon(startpoint.Y, yb) {
-						vb = Vertex{startpoint.X, yb}
+					edge := s.createBorderEdge(cell, va, vb)
+					iLeft++
+					SpliceHalfedges(&cell.Halfedges, iLeft, 0, newHalfedge(edge, cell, nil))
+					//nHalfedges++
+					if lastBorderSegment {
+						break
+					}
+					va = vb
+					fallthrough
+				// walk rightward along bottom side
+				case equalWithEpsilon(va.Y, yb) && lessThanWithEpsilon(va.X, xr):
+					lastBorderSegment := equalWithEpsilon(vz.Y, yb)
+					var vb Vertex
+					if lastBorderSegment {
+						vb = Vertex{vz.X, yb}
 					} else {
 						vb = Vertex{xr, yb}
 					}
-					// walk upward along right side
-				} else if equalWithEpsilon(endpoint.X, xr) && greaterThanWithEpsilon(endpoint.Y, yt) {
-					if equalWithEpsilon(startpoint.X, xr) {
-						vb = Vertex{xr, startpoint.Y}
+					edge := s.createBorderEdge(cell, va, vb)
+					iLeft++
+					SpliceHalfedges(&cell.Halfedges, iLeft, 0, newHalfedge(edge, cell, nil))
+					//nHalfedges++
+					if lastBorderSegment {
+						break
+					}
+					va = vb
+					fallthrough
+				// walk upward along right side
+				case equalWithEpsilon(va.X, xr) && greaterThanWithEpsilon(va.Y, yt):
+					lastBorderSegment := equalWithEpsilon(vz.X, xr)
+					var vb Vertex
+					if lastBorderSegment {
+						vb = Vertex{xr, vz.Y}
 					} else {
 						vb = Vertex{xr, yt}
 					}
-					// walk leftward along top side
-				} else if equalWithEpsilon(endpoint.Y, yt) && greaterThanWithEpsilon(endpoint.X, xl) {
-					if equalWithEpsilon(startpoint.Y, yt) {
-						vb = Vertex{startpoint.X, yt}
+					edge := s.createBorderEdge(cell, va, vb)
+					iLeft++
+					SpliceHalfedges(&cell.Halfedges, iLeft, 0, newHalfedge(edge, cell, nil))
+					//nHalfedges++
+					if lastBorderSegment {
+						break
+					}
+					va = vb
+					fallthrough
+				// walk leftward along top side
+				case equalWithEpsilon(va.Y, yt) && greaterThanWithEpsilon(va.X, xl):
+					lastBorderSegment := equalWithEpsilon(vz.Y, yt)
+					var vb Vertex
+					if lastBorderSegment {
+						vb = Vertex{vz.X, yt}
 					} else {
 						vb = Vertex{xl, yt}
 					}
-				} else {
-					//			break
+					edge := s.createBorderEdge(cell, va, vb)
+					iLeft++
+					SpliceHalfedges(&cell.Halfedges, iLeft, 0, newHalfedge(edge, cell, nil))
+					//nHalfedges++
+					if lastBorderSegment {
+						break
+					}
+					va = vb
+
+					// walk downward along left side
+					lastBorderSegment = equalWithEpsilon(vz.X, xl)
+					if lastBorderSegment {
+						vb = Vertex{xl, vz.Y}
+					} else {
+						vb = Vertex{xl, yb}
+					}
+					edge = s.createBorderEdge(cell, va, vb)
+					iLeft++
+					SpliceHalfedges(&cell.Halfedges, iLeft, 0, newHalfedge(edge, cell, nil))
+					//nHalfedges++
+					if lastBorderSegment {
+						break
+					}
+					va = vb
+
+					// walk rightward along bottom side
+					lastBorderSegment = equalWithEpsilon(vz.Y, yb)
+					if lastBorderSegment {
+						vb = Vertex{vz.X, yb}
+					} else {
+						vb = Vertex{xr, yb}
+					}
+					edge = s.createBorderEdge(cell, va, vb)
+					iLeft++
+					SpliceHalfedges(&cell.Halfedges, iLeft, 0, newHalfedge(edge, cell, nil))
+					//nHalfedges++
+					if lastBorderSegment {
+						break
+					}
+					va = vb
+
+					// walk upward along right side
+					lastBorderSegment = equalWithEpsilon(vz.X, xr)
+					if lastBorderSegment {
+						vb = Vertex{xr, vz.Y}
+					} else {
+						vb = Vertex{xr, yt}
+					}
+					edge = s.createBorderEdge(cell, va, vb)
+					iLeft++
+					SpliceHalfedges(&cell.Halfedges, iLeft, 0, newHalfedge(edge, cell, nil))
+					//nHalfedges++
+					if lastBorderSegment {
+						break
+					}
+					// no va = vb
+
+					fallthrough
+				default:
+					// TODO(zzwx): graceful
+					panic("Voronoi.closeCells() > this makes no sense!")
 				}
-
-				// Create new border edge. Slide it into iLeft+1 position
-				edge := s.createBorderEdge(cell, va, vb)
-				cell.Halfedges = append(cell.Halfedges, nil)
-				halfedges = cell.Halfedges
-				nHalfedges = len(halfedges)
-
-				copy(halfedges[iLeft+2:len(halfedges)], halfedges[iLeft+1:len(halfedges)-1])
-				halfedges[iLeft+1] = newHalfedge(edge, cell, nil)
-
 			}
 			iLeft++
 		}
+		cell.closeMe = false
 	}
 }
 
@@ -951,31 +1101,35 @@ func (s *Voronoi) gatherVertexEdges() {
 	}
 }
 
-// Compute voronoi diagram. If closeCells == true, edges from bounding box will be 
+// Compute voronoi diagram. If closeCells == true, edges from bounding box will be
 // included in diagram.
 func ComputeDiagram(sites []Vertex, bbox BBox, closeCells bool) *Diagram {
 	s := &Voronoi{
 		cellsMap: make(map[Vertex]*Cell),
 	}
 
+	siteEvents := make([]Vertex, len(sites))
+	for i := 0; i < len(sites); i++ {
+		siteEvents[i] = sites[i]
+	}
+
 	// Initialize site event queue
-	sort.Sort(VerticesByY{sites})
+	sort.Sort(VerticesByYX{siteEvents})
 
 	pop := func() *Vertex {
-		if len(sites) == 0 {
+		if len(siteEvents) == 0 {
 			return nil
 		}
-
-		site := sites[0]
-		sites = sites[1:]
+		site := siteEvents[len(siteEvents)-1]
+		siteEvents = siteEvents[:len(siteEvents)-1]
 		return &site
 	}
 
-	site := pop()
-
 	// process queue
-	xsitex := math.SmallestNonzeroFloat64
-	xsitey := math.SmallestNonzeroFloat64
+	site := pop()
+	invalid := true // emulate undefined: first xsitex, xsitey are invalid. To address https://github.com/gorhill/Javascript-Voronoi/pull/14
+	var xsitex float64
+	var xsitey float64
 	var circle *circleEvent
 
 	// main loop
@@ -988,7 +1142,7 @@ func ComputeDiagram(sites []Vertex, bbox BBox, closeCells bool) *Diagram {
 		// add beach section
 		if site != nil && (circle == nil || site.Y < circle.y || (site.Y == circle.y && site.X < circle.x)) {
 			// only if site is not a duplicate
-			if site.X != xsitex || site.Y != xsitey {
+			if invalid || site.X != xsitex || site.Y != xsitey {
 				// first create cell for new site
 				nCell := newCell(*site)
 				s.cells = append(s.cells, nCell)
@@ -998,6 +1152,7 @@ func ComputeDiagram(sites []Vertex, bbox BBox, closeCells bool) *Diagram {
 				// remember last site coords to detect duplicate
 				xsitey = site.Y
 				xsitex = site.X
+				invalid = false
 			}
 			site = pop()
 			// remove beach section
@@ -1021,10 +1176,11 @@ func ComputeDiagram(sites []Vertex, bbox BBox, closeCells bool) *Diagram {
 		s.closeCells(bbox)
 	} else {
 		for _, cell := range s.cells {
-			cell.prepare()
+			cell.prepareHalfedges()
 		}
 	}
 
+	// TODO(zzwx): Check if this is still necessary
 	s.gatherVertexEdges()
 
 	result := &Diagram{

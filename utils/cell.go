@@ -3,12 +3,10 @@
 
 // Author: Przemyslaw Szczepaniak (przeszczep@gmail.com)
 // Utils for processing voronoi diagrams
-
-
 package utils
 
 import (
-	"github.com/pzsz/voronoi"
+	"github.com/zzwx/voronoi"
 )
 
 // Calculate area of a cell
@@ -21,7 +19,7 @@ func CellArea(cell *voronoi.Cell) float64 {
 		area -= s.Y * e.X
 	}
 
-	return area/2
+	return area / 2
 }
 
 // Calculate centroid of a cell
@@ -31,13 +29,12 @@ func CellCentroid(cell *voronoi.Cell) voronoi.Vertex {
 		s := halfedge.GetStartpoint()
 		e := halfedge.GetEndpoint()
 		v := s.X*e.Y - e.X*s.Y
-		x += (s.X+e.X) * v
-		y += (s.Y+e.Y) * v
+		x += (s.X + e.X) * v
+		y += (s.Y + e.Y) * v
 	}
 	v := CellArea(cell) * 6
-	return voronoi.Vertex{x/v, y/v}
+	return voronoi.Vertex{X: x / v, Y: y / v}
 }
-
 
 // Calculate centroid of a cell
 func InsideCell(cell *voronoi.Cell, v voronoi.Vertex) bool {
@@ -45,7 +42,7 @@ func InsideCell(cell *voronoi.Cell, v voronoi.Vertex) bool {
 		a := halfedge.GetStartpoint()
 		b := halfedge.GetEndpoint()
 
-		cross := ((b.X - a.X)*(v.Y - a.Y) - (b.Y - a.Y)*(v.X - a.X))
+		cross := (b.X-a.X)*(v.Y-a.Y) - (b.Y-a.Y)*(v.X-a.X)
 
 		if cross > 0 {
 			return false
@@ -59,6 +56,6 @@ func EdgeIndex(cell *voronoi.Cell, edge *voronoi.Edge) int {
 		if halfedge.Edge == edge {
 			return i
 		}
-	}	
+	}
 	return -1
 }
