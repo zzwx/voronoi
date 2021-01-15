@@ -16,7 +16,7 @@ type Vertex struct {
 }
 
 // Vertex representing lack of vertex (or bad vertex)
-var NO_VERTEX = Vertex{math.Inf(1), math.Inf(1)}
+var NoVertex = Vertex{math.Inf(1), math.Inf(1)}
 
 // For sort interface
 type Vertices []Vertex
@@ -71,15 +71,15 @@ func (e *Edge) GetOtherEdgeVertex(v Vertex) EdgeVertex {
 	} else if v == e.Vb.Vertex {
 		return e.Va
 	}
-	return EdgeVertex{NO_VERTEX, nil}
+	return EdgeVertex{NoVertex, nil}
 }
 
 func newEdge(LeftCell, RightCell *Cell) *Edge {
 	return &Edge{
 		LeftCell:  LeftCell,
 		RightCell: RightCell,
-		Va:        EdgeVertex{NO_VERTEX, nil},
-		Vb:        EdgeVertex{NO_VERTEX, nil},
+		Va:        EdgeVertex{NoVertex, nil},
+		Vb:        EdgeVertex{NoVertex, nil},
 	}
 }
 

@@ -36,7 +36,7 @@ func (t *Cell) prepareHalfedges() int {
 	// to be fancy: dangling edges are a typically a minority.
 	for ; iHalfedge >= 0; iHalfedge-- {
 		edge := t.Halfedges[iHalfedge].Edge
-		if edge.Vb.Vertex == NO_VERTEX || edge.Va.Vertex == NO_VERTEX {
+		if edge.Vb.Vertex == NoVertex || edge.Va.Vertex == NoVertex {
 			SpliceHalfedges(&t.Halfedges, iHalfedge, 1)
 			//
 			//halfedges[iHalfedge] = halfedges[len(halfedges)-1]

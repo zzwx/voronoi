@@ -6,8 +6,9 @@
 package utils
 
 import (
-	"github.com/zzwx/voronoi"
 	"math/rand"
+
+	"github.com/zzwx/voronoi"
 )
 
 // Generate random sites in given bounding box
